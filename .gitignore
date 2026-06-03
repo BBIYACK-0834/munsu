@@ -1,0 +1,11 @@
+# dependencies
+node_modules/
+
+# environment secrets
+.env
+backend/.env
+
+# generated product cache
+backend/data/*.json
+backend/data/*.tmp
+!backend/data/.gitkeep
