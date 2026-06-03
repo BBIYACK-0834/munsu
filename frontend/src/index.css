@@ -71,6 +71,17 @@ h1 {
   line-height: 1.5;
 }
 
+.sync-status {
+  display: inline-flex;
+  margin-top: 14px;
+  border-radius: 999px;
+  padding: 7px 11px;
+  color: #1b64da;
+  background-color: #e8f3ff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .filter-section {
   display: flex;
   gap: 8px;
@@ -156,6 +167,33 @@ h1 {
   color: #6b7684;
   font-size: 14px;
   line-height: 1.45;
+}
+
+.product-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 0;
+}
+
+.product-meta div {
+  display: flex;
+  gap: 4px;
+  border-radius: 8px;
+  padding: 6px 8px;
+  background-color: #f2f4f6;
+  color: #4e5968;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.product-meta dt,
+.product-meta dd {
+  margin: 0;
+}
+
+.product-meta dt {
+  color: #8b95a1;
 }
 
 .rate {

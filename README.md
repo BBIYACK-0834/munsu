@@ -38,8 +38,40 @@ openssl rand -hex 32
 선택 환경변수:
 
 - `CORS_ORIGIN`: 운영 프론트엔드 주소만 허용하려면 `http://localhost:3000,https://your-frontend.example.com`처럼 쉼표로 구분해 입력합니다. 비워두면 개발 편의를 위해 모든 origin을 허용합니다.
+- `SAVINGS_AUTO_REFRESH_ON_MISS`: 저장된 캐시가 없을 때 `GET /api/savings`가 `FINLIFE_API_KEY`로 자동 수집을 시도할지 정합니다. 기본값은 자동 수집이며, `false`로 끌 수 있습니다.
 - `FSS_TOP_FIN_GRP_NO`: 권역코드. 기본값은 은행(`020000`)입니다.
 - `FSS_FINANCE_CD`: 특정 금융회사 코드 또는 이름으로 수집 범위를 좁힙니다.
+
+
+## 코드스페이스에서 백엔드와 프론트엔드 함께 실행
+
+터미널 1에서 백엔드를 실행합니다. 백엔드는 코드스페이스 외부 접속과 Vite 프록시가 모두 접근할 수 있도록 `0.0.0.0:5000`에서 실행됩니다.
+
+```bash
+cd backend
+npm start
+```
+
+터미널 2에서 프론트엔드를 실행합니다. Vite 개발 서버는 `/api/*` 요청을 기본적으로 `http://127.0.0.1:5000` 백엔드로 프록시하므로, 프론트엔드 코드에 코드스페이스의 긴 5000번 포트 URL을 직접 적지 않아도 됩니다.
+
+```bash
+cd frontend
+npm run dev
+```
+
+다른 백엔드 주소로 프록시해야 하면 프론트엔드 실행 전에 `VITE_BACKEND_URL`을 설정합니다. 브라우저에서 프록시를 거치지 않고 직접 API를 호출해야 하는 배포 환경에서는 `VITE_API_BASE_URL`에 공개 백엔드 주소를 설정합니다.
+
+```bash
+VITE_BACKEND_URL=https://your-codespace-5000.app.github.dev npm run dev
+VITE_API_BASE_URL=https://your-api.example.com npm run build
+```
+
+연결 확인은 다음 주소로 할 수 있습니다.
+
+```bash
+curl http://localhost:5000/api/health
+curl http://localhost:5000/api/savings
+```
 
 ## 수집 실행
 
