@@ -11,6 +11,7 @@ const {
 const app = express();
 const PORT = process.env.PORT || 5000; // 백엔드 서버는 5000번 포트에서 실행
 const REFRESH_TOKEN = process.env.SAVINGS_REFRESH_TOKEN || '';
+const AUTO_REFRESH_ON_MISS = process.env.SAVINGS_AUTO_REFRESH_ON_MISS !== 'false';
 const CORS_ALLOWED_ORIGINS = (process.env.CORS_ORIGIN || '')
   .split(',')
   .map((origin) => origin.trim())
@@ -35,13 +36,50 @@ app.get('/api/test', (req, res) => {
   res.json({ message: '백엔드 서버가 성공적으로 연결되었습니다!' });
 });
 
+// 코드스페이스/배포 상태 확인용 주소
+app.get('/api/health', async (req, res) => {
+  try {
+    const data = await readSavingsProducts();
+
+    res.json({
+      ok: true,
+      cacheReady: true,
+      totalCount: data.meta?.totalCount ?? data.products?.length ?? 0,
+      fetchedAt: data.meta?.fetchedAt ?? null,
+    });
+  } catch (error) {
+    res.status(error.code === 'ENOENT' ? 200 : 500).json({
+      ok: error.code === 'ENOENT',
+      cacheReady: false,
+      message: error.code === 'ENOENT'
+        ? '적금 상품 캐시가 아직 없습니다. FINLIFE_API_KEY가 있으면 GET /api/savings에서 자동 생성할 수 있습니다.'
+        : '적금 상품 캐시 상태를 확인하지 못했습니다.',
+      detail: error.message,
+    });
+  }
+});
+
 // 프론트엔드 목록 화면에서 바로 쓰기 좋은 적금 상품 캐시 조회
-// 금융감독원 API 키 보호와 호출량 관리를 위해 조회 API는 저장된 캐시만 반환합니다.
+// 저장된 캐시가 없고 FINLIFE_API_KEY가 있으면 코드스페이스 첫 실행 편의를 위해 1회 자동 갱신합니다.
 app.get('/api/savings', async (req, res) => {
   try {
     const data = await readSavingsProducts();
     res.json(data);
   } catch (error) {
+    if (error.code === 'ENOENT' && AUTO_REFRESH_ON_MISS && hasFinlifeApiKey()) {
+      try {
+        const data = await refreshSavingsProducts();
+        res.json(data);
+        return;
+      } catch (refreshError) {
+        res.status(502).json({
+          message: '저장된 적금 상품 데이터가 없어 금융감독원 API에서 자동 갱신을 시도했지만 실패했습니다.',
+          detail: refreshError.message,
+        });
+        return;
+      }
+    }
+
     const statusCode = error.code === 'ENOENT' ? 404 : 500;
     res.status(statusCode).json({
       message: statusCode === 404
@@ -113,8 +151,12 @@ function safeEqual(left, right) {
   return crypto.timingSafeEqual(leftBuffer, rightBuffer);
 }
 
+function hasFinlifeApiKey() {
+  return Boolean(process.env.FINLIFE_API_KEY || process.env.FSS_API_KEY);
+}
+
 if (require.main === module) {
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 백엔드 서버가 ${PORT}번 포트에서 신나게 돌아가는 중!`);
   });
 }
