@@ -26,20 +26,26 @@ body {
   background-color: #f2f4f6;
 }
 
-button {
+button,
+input {
   font: inherit;
+}
+
+button {
+  cursor: pointer;
 }
 
 .app-container {
   width: 100%;
-  max-width: 500px;
+  max-width: 520px;
   min-height: 100vh;
   margin: 0 auto;
-  padding: 28px 20px 40px;
+  padding: 28px 12px 40px;
 }
 
 .app-header {
-  margin-bottom: 24px;
+  margin-bottom: 18px;
+  padding: 0 8px;
 }
 
 .eyebrow {
@@ -90,35 +96,206 @@ h1 {
   scrollbar-width: none;
 }
 
-.filter-section::-webkit-scrollbar {
-  display: none;
+.calculator-card {
+  margin-bottom: 22px;
+  border-radius: 4px;
+  padding: 26px 22px;
+  background-color: #e8f0f9;
+  box-shadow: 0 8px 24px rgba(25, 31, 40, 0.08);
 }
 
-.filter-button {
-  flex: 0 0 auto;
-  border: 0;
-  border-radius: 999px;
-  padding: 10px 15px;
-  color: #4e5968;
-  background-color: #ffffff;
+.amount-label,
+.filter-group legend {
+  display: block;
+  color: #1f2937;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.amount-label span {
+  display: block;
+  color: #cc5363;
   font-size: 14px;
+  font-weight: 800;
+}
+
+.total-label {
+  margin-top: 24px;
+}
+
+.amount-field {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.amount-field input,
+.amount-field output {
+  width: 100%;
+  border: 1px solid #b7c1ce;
+  border-radius: 4px;
+  padding: 12px 14px;
+  color: #333d4b;
+  background-color: #ffffff;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: right;
+  box-shadow: inset 0 1px 2px rgba(25, 31, 40, 0.08);
+}
+
+.amount-field span {
+  color: #191f28;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.readonly-field output {
+  min-height: 48px;
+}
+
+.filter-group {
+  margin: 28px 0 0;
+  border: 0;
+  border-top: 1px dashed #b9c3cf;
+  padding: 28px 0 0;
+}
+
+.compact-filter {
+  border-top: 0;
+  padding-top: 22px;
+}
+
+.filter-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+
+.checkbox-grid.four-columns {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 6px;
+  color: #191f28;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.checkbox-label input {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  margin: 0;
+  accent-color: #174986;
+}
+
+.checkbox-label span {
+  overflow-wrap: anywhere;
+}
+
+.filter-helper {
+  border-left: 3px solid #7fa4c8;
+  padding-left: 10px;
+  color: #47739d;
+  font-size: 15px;
   font-weight: 700;
-  cursor: pointer;
+  line-height: 1.6;
+}
+
+.term-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.term-button {
+  border: 1px solid #c6cfda;
+  border-radius: 4px;
+  padding: 11px 6px;
+  color: #174986;
+  background-color: #ffffff;
+  font-size: 17px;
+  font-weight: 800;
   transition:
-    color 0.2s ease,
     background-color 0.2s ease,
-    box-shadow 0.2s ease;
+    color 0.2s ease,
+    transform 0.2s ease;
 }
 
-.filter-button.active {
+.term-button.active {
   color: #ffffff;
-  background-color: #3182f6;
-  box-shadow: 0 8px 18px rgba(49, 130, 246, 0.28);
+  background-color: #174986;
+  border-color: #174986;
 }
 
-.filter-button:focus-visible {
+.term-button:focus-visible,
+.search-button:focus-visible,
+.reset-button:focus-visible,
+.checkbox-label input:focus-visible {
   outline: 3px solid rgba(49, 130, 246, 0.35);
   outline-offset: 2px;
+}
+
+.filter-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 30px;
+  border-top: 1px dashed #b9c3cf;
+  padding-top: 28px;
+}
+
+.search-button,
+.reset-button {
+  border: 0;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 800;
+  box-shadow: 0 8px 16px rgba(23, 73, 134, 0.18);
+}
+
+.search-button {
+  min-width: 230px;
+  padding: 17px 20px;
+  background-color: #1f5aa6;
+}
+
+.search-button span {
+  margin-left: 4px;
+  color: #dcecff;
+  font-size: 14px;
+}
+
+.reset-button {
+  width: 68px;
+  background-color: #697789;
+  font-size: 28px;
+}
+
+.active-filter-count {
+  display: flex;
+  width: fit-content;
+  margin: 14px auto 0;
+  color: #526273;
+  background-color: rgba(255, 255, 255, 0.7);
 }
 
 .product-list {
@@ -256,6 +433,35 @@ h1 {
   }
 }
 
+@media (min-width: 480px) {
+  .filter-row {
+    grid-template-columns: minmax(0, 1fr) 210px;
+  }
+
+  .filter-row .checkbox-grid:only-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 430px) {
+  .calculator-card {
+    padding: 22px 14px;
+  }
+
+  .checkbox-grid,
+  .checkbox-grid.four-columns {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .checkbox-label {
+    font-size: 15px;
+  }
+
+  .term-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 360px) {
   .product-card {
     flex-direction: column;
@@ -264,5 +470,10 @@ h1 {
   .rate {
     width: 100%;
     text-align: left;
+  }
+
+  .checkbox-grid,
+  .checkbox-grid.four-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

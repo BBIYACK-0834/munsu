@@ -31,9 +31,27 @@ interface SavingsResponse {
   products?: SavingsProduct[]
 }
 
-const BANK_FILTERS = ['전체', '국민은행', '신한은행', '토스뱅크'] as const
+const REGION_KEYWORDS: Record<string, string[]> = {
+  서울: ['국민은행', '신한은행', '우리은행', '하나은행', 'SC제일은행', '기업은행', '카카오뱅크', '케이뱅크', '토스뱅크'],
+  부산: ['부산은행'],
+  대구: ['대구은행', 'iM뱅크', '아이엠뱅크'],
+  인천: ['신한은행', '하나은행'],
+  광주: ['광주은행'],
+  대전: ['하나은행'],
+  울산: ['경남은행', '부산은행'],
+  세종: ['하나은행', '농협은행'],
+  경기: ['국민은행', '신한은행', '우리은행', '하나은행', '기업은행'],
+  강원: ['농협은행'],
+  충북: ['농협은행'],
+  충남: ['농협은행'],
+  전북: ['전북은행'],
+  전남: ['광주은행'],
+  경북: ['대구은행', 'iM뱅크', '아이엠뱅크'],
+  경남: ['경남은행'],
+  제주: ['제주은행'],
+}
 
-type BankFilter = (typeof BANK_FILTERS)[number]
+type BankFilter = (typeof BANK_FILTERS)[number]['value']
 
 const MOCK_PRODUCTS: SavingsProduct[] = [
   {
@@ -80,6 +98,15 @@ const MOCK_PRODUCTS: SavingsProduct[] = [
 function App() {
   const [products, setProducts] = useState<SavingsProduct[]>([])
   const [selectedBank, setSelectedBank] = useState<BankFilter>('전체')
+  const [selectedTerm, setSelectedTerm] = useState(12)
+  const [monthlyDeposit, setMonthlyDeposit] = useState(DEFAULT_MONTHLY_DEPOSIT)
+  const [financialGroups, setFinancialGroups] = useState(['전체'])
+  const [reserveTypes, setReserveTypes] = useState(['전체'])
+  const [interestTypes, setInterestTypes] = useState(['전체'])
+  const [regions, setRegions] = useState(['전체'])
+  const [joinTargets, setJoinTargets] = useState(['제한없음'])
+  const [joinWays, setJoinWays] = useState(['인터넷', '스마트폰'])
+  const [benefits, setBenefits] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
   const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null)
@@ -115,12 +142,26 @@ function App() {
     fetchSavingsProducts()
   }, [])
 
+  const totalDeposit = monthlyDeposit * selectedTerm
+  const activeFilterCount = useMemo(() => {
+    return [financialGroups, reserveTypes, interestTypes, regions, joinWays]
+      .filter((values) => !isAllSelected(values))
+      .length + joinTargets.length + benefits.length + (selectedBank === '전체' ? 0 : 1)
+  }, [benefits.length, financialGroups, interestTypes, joinTargets.length, joinWays, regions, reserveTypes, selectedBank])
+
   const visibleProducts = useMemo(() => {
     return products
-      .filter((product) => {
-        if (selectedBank === '전체') {
-          return true
-        }
+      .filter((product) => matchesBank(product, selectedBank))
+      .filter((product) => product.termMonths.length === 0 || product.termMonths.includes(selectedTerm))
+      .filter((product) => matchesFinancialGroups(product, financialGroups))
+      .filter((product) => matchesOptionText(product, reserveTypes, 'reserveTypeName'))
+      .filter((product) => matchesOptionText(product, interestTypes, 'interestRateTypeName'))
+      .filter((product) => matchesRegions(product, regions))
+      .filter((product) => matchesJoinTargets(product, joinTargets))
+      .filter((product) => matchesJoinWays(product, joinWays))
+      .filter((product) => matchesBenefits(product, benefits))
+      .toSorted((a, b) => getBestRate(b, selectedTerm) - getBestRate(a, selectedTerm))
+  }, [benefits, financialGroups, interestTypes, joinTargets, joinWays, products, regions, reserveTypes, selectedBank, selectedTerm])
 
         return product.companyName.includes(selectedBank)
       })
@@ -142,17 +183,115 @@ function App() {
         </p>
       </header>
 
-      <section className="filter-section" aria-label="은행별 상품 필터">
-        {BANK_FILTERS.map((bank) => (
-          <button
-            key={bank}
-            type="button"
-            className={`filter-button ${selectedBank === bank ? 'active' : ''}`}
-            onClick={() => setSelectedBank(bank)}
-          >
-            {bank}
+      <section className="calculator-card" aria-label="적금 검색 조건">
+        <label className="amount-label" htmlFor="monthly-deposit">
+          월 저축 금액
+          <span>(최대 : 1천만원)</span>
+        </label>
+        <div className="amount-field">
+          <input
+            id="monthly-deposit"
+            inputMode="numeric"
+            max={MAX_MONTHLY_DEPOSIT}
+            min={0}
+            type="text"
+            value={formatNumber(monthlyDeposit)}
+            onChange={(event) => setMonthlyDeposit(parseAmount(event.target.value))}
+          />
+          <span>원</span>
+        </div>
+
+        <fieldset className="filter-group compact-filter">
+          <legend>저축 예정기간을 선택하세요</legend>
+          <div className="term-grid">
+            {TERM_OPTIONS.map((term) => (
+              <button
+                key={term}
+                type="button"
+                className={`term-button ${selectedTerm === term ? 'active' : ''}`}
+                onClick={() => setSelectedTerm(term)}
+              >
+                {term}개월
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        <div className="amount-label total-label">총 저축 금액</div>
+        <div className="amount-field readonly-field">
+          <output>{formatNumber(totalDeposit)}</output>
+          <span>원</span>
+        </div>
+
+        <FilterFieldset
+          columns="four"
+          legend="은행 필터"
+          options={BANK_FILTERS}
+          selectedValues={[selectedBank]}
+          onChange={(value) => setSelectedBank(value as BankFilter)}
+          single
+        />
+
+        <FilterFieldset
+          helper="신협조합을 선택하면 개별 조합에서 취급하는 신협상품을 검색할 수 있습니다."
+          legend="금융권역"
+          options={FINANCIAL_GROUP_OPTIONS}
+          selectedValues={financialGroups}
+          onChange={(value) => setFinancialGroups(toggleMultiValue(financialGroups, value))}
+        />
+
+        <FilterFieldset
+          legend="적립방식"
+          options={RESERVE_TYPE_OPTIONS}
+          selectedValues={reserveTypes}
+          onChange={(value) => setReserveTypes(toggleMultiValue(reserveTypes, value))}
+        />
+
+        <FilterFieldset
+          legend="이자계산방식"
+          options={INTEREST_TYPE_OPTIONS}
+          selectedValues={interestTypes}
+          onChange={(value) => setInterestTypes(toggleMultiValue(interestTypes, value))}
+        />
+
+        <FilterFieldset
+          columns="four"
+          legend="지역선택"
+          options={REGION_OPTIONS}
+          selectedValues={regions}
+          onChange={(value) => setRegions(toggleMultiValue(regions, value))}
+        />
+
+        <FilterFieldset
+          legend="가입대상"
+          options={JOIN_TARGET_OPTIONS}
+          selectedValues={joinTargets}
+          onChange={(value) => setJoinTargets(toggleRequiredValue(joinTargets, value))}
+        />
+
+        <FilterFieldset
+          legend="가입방법"
+          options={JOIN_WAY_OPTIONS}
+          selectedValues={joinWays}
+          onChange={(value) => setJoinWays(toggleMultiValue(joinWays, value))}
+        />
+
+        <FilterFieldset
+          legend="우대조건"
+          options={BENEFIT_OPTIONS}
+          selectedValues={benefits}
+          onChange={(value) => setBenefits(toggleOptionalValue(benefits, value))}
+        />
+
+        <div className="filter-actions">
+          <button className="search-button" type="button">
+            🔍 금융상품 검색 <span>{visibleProducts.length}개</span>
           </button>
-        ))}
+          <button className="reset-button" type="button" onClick={resetFilters} aria-label="검색 조건 초기화">
+            ↻
+          </button>
+        </div>
+        {activeFilterCount > 0 && <p className="active-filter-count">적용된 상세 필터 {activeFilterCount}개</p>}
       </section>
 
       {isLoading ? (
@@ -193,7 +332,7 @@ function App() {
           ))}
 
           {visibleProducts.length === 0 && (
-            <p className="status-card">선택한 은행의 상품이 없습니다.</p>
+            <p className="status-card">선택한 조건에 맞는 상품이 없습니다.</p>
           )}
         </section>
       )}
