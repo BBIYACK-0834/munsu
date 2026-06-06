@@ -79,25 +79,6 @@ const DEFAULT_MONTHLY_DEPOSIT = 100_000
 const TERM_OPTIONS = [6, 12, 24, 36, 48, 60] as const
 const BANK_FILTERS = ['전체', '국민은행', '신한은행', '우리은행', '하나은행', '농협은행', '기업은행', '토스뱅크'].map(createOption)
 
-type FilterOption = {
-  label: string
-  value: string
-}
-
-const MAX_MONTHLY_DEPOSIT = 10_000_000
-const DEFAULT_MONTHLY_DEPOSIT = 100_000
-const TERM_OPTIONS = [6, 12, 24, 36, 48, 60] as const
-const BANK_FILTERS = [
-  '전체',
-  '국민은행',
-  '신한은행',
-  '우리은행',
-  '하나은행',
-  '농협은행',
-  '기업은행',
-  '토스뱅크',
-].map((value) => ({ label: value, value }))
-
 const FINANCIAL_GROUP_OPTIONS = ['전체', '은행', '저축은행', '신협'].map(createOption)
 const RESERVE_TYPE_OPTIONS = ['전체', '정액적립식', '자유적립식'].map(createOption)
 const INTEREST_TYPE_OPTIONS = ['전체', '단리', '복리'].map(createOption)
@@ -234,23 +215,6 @@ function App() {
     if (selectedBank !== '전체') {
       chips.push(`은행 ${selectedBank}`)
     }
-  const resetFilters = () => {
-    setSelectedBank('전체')
-    setSelectedTerm(12)
-    setMonthlyDeposit(DEFAULT_MONTHLY_DEPOSIT)
-    setFinancialGroups(['전체'])
-    setReserveTypes(['전체'])
-    setInterestTypes(['전체'])
-    setRegions(['전체'])
-    setJoinTargets(['제한없음'])
-    setJoinWays(['인터넷', '스마트폰'])
-    setBenefits([])
-  }
-  const activeFilterCount = useMemo(() => {
-    return [financialGroups, reserveTypes, interestTypes, regions, joinWays]
-      .filter((values) => !isAllSelected(values))
-      .length + joinTargets.length + benefits.length + (selectedBank === '전체' ? 0 : 1)
-  }, [benefits.length, financialGroups, interestTypes, joinTargets.length, joinWays, regions, reserveTypes, selectedBank])
 
     chips.push(`기간 ${selectedTerm}개월`)
     addChips(chips, '금융권역', financialGroups, ['전체'])
@@ -1004,85 +968,6 @@ function getBestRate(product: SavingsProduct, selectedTerm?: number) {
 function estimateInterest(monthlyAmount: number, termMonths: number, annualRate: number) {
   return monthlyAmount * termMonths * (annualRate / 100) * (termMonths / 12)
 }
-
-function matchesJoinTargets(product: SavingsProduct, selectedTargets: string[]) {
-  return selectedTargets.some((target) => product.joinRestriction?.includes(target) || product.joinMembers?.includes(target))
-}
-
-function matchesJoinWays(product: SavingsProduct, selectedWays: string[]) {
-  if (isAllSelected(selectedWays)) {
-    return true
-  }
-
-  const joinWays = product.joinWays?.length ? product.joinWays : product.joinWayText.split(',').map((way) => way.trim())
-  return selectedWays.some((way) => joinWays.some((joinWay) => joinWay.includes(way)))
-}
-
-function matchesBenefits(product: SavingsProduct, selectedBenefits: string[]) {
-  if (selectedBenefits.length === 0) {
-    return true
-  }
-
-  const searchableText = [product.preferentialCondition, product.etcNote, product.productName].join(' ')
-  return selectedBenefits.some((benefit) => searchableText.includes(benefit))
-}
-
-function parseAmount(value: string) {
-  const number = Number(value.replace(/[^0-9]/g, ''))
-
-  if (!Number.isFinite(number)) {
-    return 0
-  }
-
-  return Math.min(number, MAX_MONTHLY_DEPOSIT)
-}
-
-function formatNumber(value: number) {
-  return new Intl.NumberFormat('ko-KR').format(value)
-}
-
-function getBestRate(product: SavingsProduct, selectedTerm?: number) {
-  const matchingOptions = selectedTerm
-    ? product.options.filter((option) => option.termMonths === selectedTerm)
-    : product.options
-  const maxOptionRate = Math.max(...matchingOptions.map((option) => option.maxRate ?? option.basicRate ?? 0), 0)
-
-  return maxOptionRate || (product.rateSummary.maxPreferentialRate ?? product.rateSummary.maxBasicRate ?? 0)
-}
-
-type FilterFieldsetProps = {
-  columns?: 'three' | 'four'
-  helper?: string
-  legend: string
-  options: readonly FilterOption[]
-  selectedValues: string[]
-  single?: boolean
-  onChange: (value: string) => void
-}
-
-function FilterFieldset({ columns = 'three', helper, legend, options, selectedValues, single = false, onChange }: FilterFieldsetProps) {
-  return (
-    <fieldset className="filter-group">
-      <legend>{legend}</legend>
-      {helper && <p className="filter-helper">{helper}</p>}
-      <div className={`checkbox-grid ${columns === 'four' ? 'four-columns' : ''}`}>
-        {options.map((option) => (
-          <label className="checkbox-label" key={option.value}>
-            <input
-              checked={selectedValues.includes(option.value)}
-              name={single ? legend : undefined}
-              type={single ? 'radio' : 'checkbox'}
-              value={option.value}
-              onChange={() => onChange(option.value)}
-            />
-            <span>{option.label}</span>
-          </label>
-        ))}
-      </div>
-    </fieldset>
-  )
-}
-
 
 function formatRate(rate: number) {
   return `${rate.toFixed(2)}%`
