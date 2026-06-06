@@ -7,6 +7,8 @@ interface SavingsOption {
   termMonths: number | null
   basicRate: number | null
   maxRate: number | null
+  interestRateTypeName?: string
+  reserveTypeName?: string
 }
 
 interface SavingsProduct {
@@ -15,6 +17,11 @@ interface SavingsProduct {
   productName: string
   maturityInterest: string
   joinWayText: string
+  joinWays?: string[]
+  preferentialCondition?: string
+  joinRestriction?: string
+  joinMembers?: string
+  etcNote?: string
   termMonths: number[]
   rateSummary: {
     maxPreferentialRate: number | null
@@ -50,6 +57,34 @@ const REGION_KEYWORDS: Record<string, string[]> = {
   경남: ['경남은행'],
   제주: ['제주은행'],
 }
+
+
+type FilterOption = {
+  label: string
+  value: string
+}
+
+const MAX_MONTHLY_DEPOSIT = 10_000_000
+const DEFAULT_MONTHLY_DEPOSIT = 100_000
+const TERM_OPTIONS = [6, 12, 24, 36, 48, 60] as const
+const BANK_FILTERS = [
+  '전체',
+  '국민은행',
+  '신한은행',
+  '우리은행',
+  '하나은행',
+  '농협은행',
+  '기업은행',
+  '토스뱅크',
+].map((value) => ({ label: value, value }))
+
+const FINANCIAL_GROUP_OPTIONS = ['전체', '은행', '저축은행', '신협'].map(createOption)
+const RESERVE_TYPE_OPTIONS = ['전체', '정액적립식', '자유적립식'].map(createOption)
+const INTEREST_TYPE_OPTIONS = ['전체', '단리', '복리'].map(createOption)
+const REGION_OPTIONS = ['전체', ...Object.keys(REGION_KEYWORDS)].map(createOption)
+const JOIN_TARGET_OPTIONS = ['제한없음', '서민전용', '일부제한'].map(createOption)
+const JOIN_WAY_OPTIONS = ['전체', '영업점', '인터넷', '스마트폰', '전화'].map(createOption)
+const BENEFIT_OPTIONS = ['급여', '카드', '자동이체', '첫거래', '마케팅동의'].map(createOption)
 
 type BankFilter = (typeof BANK_FILTERS)[number]['value']
 
@@ -143,6 +178,18 @@ function App() {
   }, [])
 
   const totalDeposit = monthlyDeposit * selectedTerm
+  const resetFilters = () => {
+    setSelectedBank('전체')
+    setSelectedTerm(12)
+    setMonthlyDeposit(DEFAULT_MONTHLY_DEPOSIT)
+    setFinancialGroups(['전체'])
+    setReserveTypes(['전체'])
+    setInterestTypes(['전체'])
+    setRegions(['전체'])
+    setJoinTargets(['제한없음'])
+    setJoinWays(['인터넷', '스마트폰'])
+    setBenefits([])
+  }
   const activeFilterCount = useMemo(() => {
     return [financialGroups, reserveTypes, interestTypes, regions, joinWays]
       .filter((values) => !isAllSelected(values))
@@ -163,10 +210,6 @@ function App() {
       .toSorted((a, b) => getBestRate(b, selectedTerm) - getBestRate(a, selectedTerm))
   }, [benefits, financialGroups, interestTypes, joinTargets, joinWays, products, regions, reserveTypes, selectedBank, selectedTerm])
 
-        return product.companyName.includes(selectedBank)
-      })
-      .toSorted((a, b) => getBestRate(b) - getBestRate(a))
-  }, [products, selectedBank])
 
   return (
     <main className="app-container">
@@ -340,9 +383,142 @@ function App() {
   )
 }
 
-function getBestRate(product: SavingsProduct) {
-  return product.rateSummary.maxPreferentialRate ?? product.rateSummary.maxBasicRate ?? 0
+function createOption(value: string): FilterOption {
+  return { label: value, value }
 }
+
+function isAllSelected(values: string[]) {
+  return values.includes('전체')
+}
+
+function toggleMultiValue(currentValues: string[], value: string) {
+  if (value === '전체') {
+    return ['전체']
+  }
+
+  const nextValues = currentValues.includes(value)
+    ? currentValues.filter((currentValue) => currentValue !== value)
+    : [...currentValues.filter((currentValue) => currentValue !== '전체'), value]
+
+  return nextValues.length > 0 ? nextValues : ['전체']
+}
+
+function toggleRequiredValue(currentValues: string[], value: string) {
+  const nextValues = currentValues.includes(value)
+    ? currentValues.filter((currentValue) => currentValue !== value)
+    : [...currentValues, value]
+
+  return nextValues.length > 0 ? nextValues : [value]
+}
+
+function toggleOptionalValue(currentValues: string[], value: string) {
+  return currentValues.includes(value)
+    ? currentValues.filter((currentValue) => currentValue !== value)
+    : [...currentValues, value]
+}
+
+function matchesBank(product: SavingsProduct, selectedBank: BankFilter) {
+  return selectedBank === '전체' || product.companyName.includes(selectedBank)
+}
+
+function matchesFinancialGroups(product: SavingsProduct, selectedGroups: string[]) {
+  if (isAllSelected(selectedGroups)) {
+    return true
+  }
+
+  const searchableText = `${product.companyName} ${product.productName}`
+  return selectedGroups.some((group) => searchableText.includes(group))
+}
+
+function matchesOptionText(product: SavingsProduct, selectedValues: string[], optionKey: 'reserveTypeName' | 'interestRateTypeName') {
+  return isAllSelected(selectedValues) || product.options.some((option) => selectedValues.includes(option[optionKey] ?? ''))
+}
+
+function matchesRegions(product: SavingsProduct, selectedRegions: string[]) {
+  return isAllSelected(selectedRegions) || selectedRegions.some((region) => {
+    const keywords = REGION_KEYWORDS[region] ?? []
+    return keywords.some((keyword) => product.companyName.includes(keyword))
+  })
+}
+
+function matchesJoinTargets(product: SavingsProduct, selectedTargets: string[]) {
+  return selectedTargets.some((target) => product.joinRestriction?.includes(target) || product.joinMembers?.includes(target))
+}
+
+function matchesJoinWays(product: SavingsProduct, selectedWays: string[]) {
+  if (isAllSelected(selectedWays)) {
+    return true
+  }
+
+  const joinWays = product.joinWays?.length ? product.joinWays : product.joinWayText.split(',').map((way) => way.trim())
+  return selectedWays.some((way) => joinWays.some((joinWay) => joinWay.includes(way)))
+}
+
+function matchesBenefits(product: SavingsProduct, selectedBenefits: string[]) {
+  if (selectedBenefits.length === 0) {
+    return true
+  }
+
+  const searchableText = [product.preferentialCondition, product.etcNote, product.productName].join(' ')
+  return selectedBenefits.some((benefit) => searchableText.includes(benefit))
+}
+
+function parseAmount(value: string) {
+  const number = Number(value.replace(/[^0-9]/g, ''))
+
+  if (!Number.isFinite(number)) {
+    return 0
+  }
+
+  return Math.min(number, MAX_MONTHLY_DEPOSIT)
+}
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat('ko-KR').format(value)
+}
+
+function getBestRate(product: SavingsProduct, selectedTerm?: number) {
+  const matchingOptions = selectedTerm
+    ? product.options.filter((option) => option.termMonths === selectedTerm)
+    : product.options
+  const maxOptionRate = Math.max(...matchingOptions.map((option) => option.maxRate ?? option.basicRate ?? 0), 0)
+
+  return maxOptionRate || (product.rateSummary.maxPreferentialRate ?? product.rateSummary.maxBasicRate ?? 0)
+}
+
+type FilterFieldsetProps = {
+  columns?: 'three' | 'four'
+  helper?: string
+  legend: string
+  options: readonly FilterOption[]
+  selectedValues: string[]
+  single?: boolean
+  onChange: (value: string) => void
+}
+
+function FilterFieldset({ columns = 'three', helper, legend, options, selectedValues, single = false, onChange }: FilterFieldsetProps) {
+  return (
+    <fieldset className="filter-group">
+      <legend>{legend}</legend>
+      {helper && <p className="filter-helper">{helper}</p>}
+      <div className={`checkbox-grid ${columns === 'four' ? 'four-columns' : ''}`}>
+        {options.map((option) => (
+          <label className="checkbox-label" key={option.value}>
+            <input
+              checked={selectedValues.includes(option.value)}
+              name={single ? legend : undefined}
+              type={single ? 'radio' : 'checkbox'}
+              value={option.value}
+              onChange={() => onChange(option.value)}
+            />
+            <span>{option.label}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  )
+}
+
 
 function formatRate(rate: number) {
   return `${rate.toFixed(2)}%`
